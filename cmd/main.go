@@ -1,92 +1,122 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
+	"ethereum-crawler/config"
+	"ethereum-crawler/utils"
 	"fmt"
-	"github.com/cockroachdb/pebble"
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
-	"log"
-	"math/big"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
 )
 
-var infuraURL = "https://mainnet.infura.io/v3/8ae89b94ba6640cb8f9d1c42b53f21ee"
+/*
+1. last height , last transaction
+2.
+*/
+import (
+	"context"
+	"ethereum-crawler/node"
+	"syscall"
+)
+
+const (
+	dbPathF           = "db-path"
+	dbPathUsage       = "Location of the database files."
+	logLevelF         = "log-level"
+	configF           = "config"
+	Version           = "0.0.1"
+	logLevelFlagUsage = "Options: debug, info, warn, error."
+)
+
+/*
+TODO: read config from env variables
+*/
 
 func main() {
-	// Connect to a local Ethereum node (make sure it's running)
-	client, err := rpc.Dial(infuraURL)
-	if err != nil {
-		log.Fatal(err)
-	}
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-quit
+		cancel()
+	}()
+	cfg := new(config.Config)
 
-	// Open or create a Pebble database
-	db, err := pebble.Open("ethereum_db", &pebble.Options{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	// Replace the following parameters with your filter criteria
-	fromBlock := big.NewInt(0)
-	toBlock := big.NewInt(1000000)
-	addresses := []common.Address{common.HexToAddress("0x1234567890123456789012345678901234567890")}
-
-	// Create filter options
-	filterOpts := ethereum.FilterQuery{
-		Addresses: addresses,
-		FromBlock: fromBlock,
-		ToBlock:   toBlock,
-	}
-
-	// Subscribe to logs
-	logsCh := make(chan types.Log)
-	ctx := context.Background()
-	sub, err := client.EthSubscribe(ctx, logsCh, "logs", filterOpts)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sub.Unsubscribe()
-
-	fmt.Println("Listening for logs...")
-
-	for {
-		select {
-		case err := <-sub.Err():
-			log.Fatal(err)
-		case log := <-logsCh:
-			if err := saveLogToDB(db, log); err != nil {
-				fmt.Println("Error saving log to DB:", err)
-			}
-			printLog(log)
+	cmd := NewCmd(cfg, func(cmd *cobra.Command, _ []string) error {
+		fmt.Println("Start crawler")
+		node, err := node.New(cfg, ctx)
+		// pass context
+		//node.StartFetch()
+		//node.Subscribe(1, 1000000)
+		go node.FetchBlocks(10000000)
+		node.FetchTransactions()
+		if err != nil {
+			return err
 		}
+		return nil
+
+	})
+	if err := cmd.ExecuteContext(ctx); err != nil {
+		os.Exit(1)
 	}
 }
 
-func saveLogToDB(db *pebble.DB, log types.Log) error {
-	// Convert log to JSON
-	logJSON, err := json.Marshal(log)
-	if err != nil {
-		return err
+func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *cobra.Command {
+	ethCmd := &cobra.Command{
+		Use:     "eth [flags]",
+		Short:   "eth crawler",
+		Version: Version,
+		RunE:    run,
 	}
 
-	// Use block hash as key
-	key := []byte(log.BlockHash.Hex())
+	var cfgFile string
+	var cwdErr error
 
-	// Save log data to the Pebble database
-	return db.Set(key, logJSON, pebble.Sync)
-}
+	ethCmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
+		if cwdErr != nil && config.DatabasePath == "" {
+			return fmt.Errorf("find current working directory: %v", cwdErr)
+		}
 
-func printLog(log types.Log) {
-	// You can customize the output or processing of the log data here
-	fmt.Printf("BlockHash: %s\n", log.BlockHash.Hex())
-	fmt.Printf("BlockNumber: %s\n", log.BlockNumber)
-	fmt.Printf("TxHash: %s\n", log.TxHash.Hex())
-	fmt.Printf("TxIndex: %d\n", log.TxIndex)
-	fmt.Printf("Index: %d\n", log.Index)
-	fmt.Printf("Address: %s\n", log.Address.Hex())
-	fmt.Printf("Data: %s\n", log.Data)
-	fmt.Println("--------------------------------------")
+		v := viper.New()
+		if cfgFile != "" {
+			v.SetConfigType("yaml")
+			v.SetConfigFile(cfgFile)
+			if err := v.ReadInConfig(); err != nil {
+				return err
+			}
+		}
+
+		v.AutomaticEnv()
+		v.SetEnvPrefix("Eth")
+		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+		if err := v.BindPFlags(cmd.Flags()); err != nil {
+			return nil
+		}
+
+		// TextUnmarshallerHookFunc allows us to unmarshal values that satisfy the
+		// encoding.TextUnmarshaller interface (see the LogLevel type for an example).
+		return v.Unmarshal(config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+			mapstructure.TextUnmarshallerHookFunc(), mapstructure.StringToTimeDurationHookFunc())))
+	}
+
+	var defaultDBPath string
+	defaultDBPath, cwdErr = os.Getwd()
+	// Use empty string if we can't get the working directory.
+	// We don't want to return an error here since that would make `--help` fail.
+	// If the error is non-nil and a db path is not provided by the user, we'll return it in PreRunE.
+	if cwdErr == nil {
+		defaultDBPath = filepath.Join(defaultDBPath, "ethereum_db")
+	}
+
+	defaultLogLevel := utils.INFO
+
+	ethCmd.Flags().String("node", "http://localhost:8545", "node address")
+	ethCmd.Flags().Var(&defaultLogLevel, logLevelF, logLevelFlagUsage)
+	ethCmd.Flags().String(dbPathF, defaultDBPath, dbPathUsage)
+
+	return ethCmd
 }
