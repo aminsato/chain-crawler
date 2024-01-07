@@ -2,6 +2,10 @@ package main
 
 import (
 	"ethereum-crawler/config"
+	"ethereum-crawler/db"
+	"ethereum-crawler/http"
+	"ethereum-crawler/model"
+	"ethereum-crawler/sync"
 	"ethereum-crawler/utils"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
@@ -23,18 +27,20 @@ import (
 	"syscall"
 )
 
+// last height  must be changed to 0
+// print error on server side
+
 const (
 	dbPathF           = "db-path"
 	dbPathUsage       = "Location of the database files."
+	defaultHTTPPort   = "6060"
 	logLevelF         = "log-level"
+	httpPortF         = "http-port"
+	httpPortUsage     = "The httpPortF on which the HTTP server will listen for requests."
 	configF           = "config"
 	Version           = "0.0.1"
 	logLevelFlagUsage = "Options: debug, info, warn, error."
 )
-
-/*
-TODO: read config from env variables
-*/
 
 func main() {
 	quit := make(chan os.Signal, 1)
@@ -47,18 +53,39 @@ func main() {
 	cfg := new(config.Config)
 
 	cmd := NewCmd(cfg, func(cmd *cobra.Command, _ []string) error {
-		fmt.Println("Start crawler")
-		node, err := node.New(cfg, ctx)
-		// pass context
-		//node.StartFetch()
-		//node.Subscribe(1, 1000000)
-		go node.FetchBlocks(10000000)
-		node.FetchTransactions()
+		fmt.Printf("Start crawler")
+
+		log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
+
+		node, err := node.NewEthNode(ctx, cfg.NodeAddress, log)
+
 		if err != nil {
 			return err
 		}
-		return nil
+		db, err := db.NewLevelDB[model.Account](cfg.DatabasePath)
+		//db := db.NewMemDB[model.Account]()
+		if err != nil {
+			return err
+		}
 
+		defer func() {
+			err := db.Close()
+			if err != nil {
+				log.Error("Error closing db", err)
+			}
+		}()
+		httpService := http.New(db, log, cfg.HTTPPort)
+		go func() {
+			if err := httpService.Run(); err != nil {
+				log.Errorw("Error in http server", "error", err)
+			}
+		}()
+		s, err := sync.New(ctx, node, db, log)
+		if err != nil {
+			return err
+		}
+
+		return s.Start()
 	})
 	if err := cmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
@@ -73,7 +100,6 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 		RunE:    run,
 	}
 
-	var cfgFile string
 	var cwdErr error
 
 	ethCmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -82,13 +108,6 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 		}
 
 		v := viper.New()
-		if cfgFile != "" {
-			v.SetConfigType("yaml")
-			v.SetConfigFile(cfgFile)
-			if err := v.ReadInConfig(); err != nil {
-				return err
-			}
-		}
 
 		v.AutomaticEnv()
 		v.SetEnvPrefix("Eth")
@@ -114,9 +133,10 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 
 	defaultLogLevel := utils.INFO
 
-	ethCmd.Flags().String("node", "http://localhost:8545", "node address")
+	ethCmd.Flags().String("node", "https://mainnet.infura.io/v3/8ae89b94ba6640cb8f9d1c42b53f21ee", "node address")
 	ethCmd.Flags().Var(&defaultLogLevel, logLevelF, logLevelFlagUsage)
 	ethCmd.Flags().String(dbPathF, defaultDBPath, dbPathUsage)
+	ethCmd.Flags().String(httpPortF, defaultHTTPPort, httpPortUsage)
 
 	return ethCmd
 }
