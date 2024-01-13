@@ -1,0 +1,16 @@
+version: "1.1"
+services:
+  app:
+    image: eth-crw-image
+    container_name: eth-crw-container
+    command:  /crw  --http-port 1080 --node-address https://mainnet.infura.io/v3/8585898bb15043cf9f4df9bf688d06c2
+    ports:
+      - "1080:1080"
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: build
+    volumes:
+      - level_db:/app/ethereum_db
+volumes:
+  level_db:

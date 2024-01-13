@@ -1,20 +1,23 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+
 	"ethereum-crawler/config"
 	"ethereum-crawler/db"
 	"ethereum-crawler/http"
 	"ethereum-crawler/model"
 	"ethereum-crawler/sync"
 	"ethereum-crawler/utils"
-	"fmt"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strings"
 )
 
 /*
@@ -23,23 +26,29 @@ import (
 */
 import (
 	"context"
-	"ethereum-crawler/node"
 	"syscall"
+
+	"ethereum-crawler/node"
 )
 
 // last height  must be changed to 0
-// print error on server side
+// print error on server side7
 
 const (
-	dbPathF           = "db-path"
-	dbPathUsage       = "Location of the database files."
-	defaultHTTPPort   = "6060"
+	dbPathF         = "db-path"
+	dbPathUsage     = "Location of the database files."
+	defaultHTTPPort = "6060"
+	//defaultNodeAddress = "https://mainnet.infura.io/v3/8ae89b94ba6640cb8f9d1c42b53f21ee"
+	defaultNodeAddress = "https://mainnet.infura.io/v3/8ae89b94ba6640cb8f9d1c42b53f21ee"
+
 	logLevelF         = "log-level"
+	NodeAddressF      = "node-address"
 	httpPortF         = "http-port"
 	httpPortUsage     = "The httpPortF on which the HTTP server will listen for requests."
 	configF           = "config"
 	Version           = "0.0.1"
 	logLevelFlagUsage = "Options: debug, info, warn, error."
+	nodeAddressUsage  = "The address of the node to connect to."
 )
 
 func main() {
@@ -53,18 +62,17 @@ func main() {
 	cfg := new(config.Config)
 
 	cmd := NewCmd(cfg, func(cmd *cobra.Command, _ []string) error {
-		fmt.Printf("Start crawler")
-
 		log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
-
-		node, err := node.NewEthNode(ctx, cfg.NodeAddress, log)
-
 		if err != nil {
 			return err
 		}
+		log.Infow("Start crawler")
+
 		db, err := db.NewLevelDB[model.Account](cfg.DatabasePath)
-		//db := db.NewMemDB[model.Account]()
+
+		// db := db.NewMemDB[model.Account]()
 		if err != nil {
+			log.Error("Error opening db", err)
 			return err
 		}
 
@@ -80,14 +88,22 @@ func main() {
 				log.Errorw("Error in http server", "error", err)
 			}
 		}()
+		input := bufio.NewScanner(os.Stdin)
+		input.Scan()
+
+		node, err := node.NewEthNode(ctx, cfg.NodeAddress, log)
+		if err != nil {
+			return err
+		}
 		s, err := sync.New(ctx, node, db, log)
 		if err != nil {
 			return err
 		}
-
 		return s.Start()
 	})
 	if err := cmd.ExecuteContext(ctx); err != nil {
+		log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
+		log.Errorw("Error running command", "error", err)
 		os.Exit(1)
 	}
 }
@@ -133,10 +149,14 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 
 	defaultLogLevel := utils.INFO
 
-	ethCmd.Flags().String("node", "https://mainnet.infura.io/v3/8ae89b94ba6640cb8f9d1c42b53f21ee", "node address")
+	ethCmd.Flags().String(NodeAddressF, defaultNodeAddress, nodeAddressUsage)
 	ethCmd.Flags().Var(&defaultLogLevel, logLevelF, logLevelFlagUsage)
 	ethCmd.Flags().String(dbPathF, defaultDBPath, dbPathUsage)
 	ethCmd.Flags().String(httpPortF, defaultHTTPPort, httpPortUsage)
-
 	return ethCmd
 }
+
+/*
+ $ex=80 go run main.go
+ go run main.go ex=80
+*/

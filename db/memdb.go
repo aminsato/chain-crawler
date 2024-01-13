@@ -22,6 +22,7 @@ func (cli *MemClient[T]) Add(key string, val T) error {
 	cli.db[key] = val
 	return nil
 }
+
 func (cli *MemClient[T]) IsNotFoundError(err error) bool {
 	return errors.Is(err, memdbNotFoundErr)
 }
@@ -37,11 +38,9 @@ func (cli *MemClient[T]) Get(key string) (T, error) {
 		return value, memdbNotFoundErr
 	}
 	return value, nil
-
 }
 
 func (cli *MemClient[T]) Records(_ *string, _ *string) (allRecords map[string]T, err error) {
-
 	allRecords = make(map[string]T)
 	for k, v := range cli.db {
 		allRecords[k] = v

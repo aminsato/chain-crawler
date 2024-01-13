@@ -15,7 +15,7 @@ type Config struct {
 	WebsocketHost string         `mapstructure:"ws-host"`
 	WebsocketPort uint16         `mapstructure:"ws-port"`
 	DatabasePath  string         `mapstructure:"db-path"`
-	NodeAddress   string         `mapstructure:"node"`
+	NodeAddress   string         `mapstructure:"node-address"`
 	Node          string         `mapstructure:"node1"`
 	LogLevel      utils.LogLevel `mapstructure:"log-level"`
 	Colour        bool           `mapstructure:"colour"`

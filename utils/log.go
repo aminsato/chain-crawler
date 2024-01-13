@@ -123,6 +123,6 @@ func NewZapLogger(logLevel LogLevel, colour bool) (*ZapLogger, error) {
 	return &ZapLogger{log.Sugar()}, nil
 }
 
-func (l *ZapLogger) warningf(msg string, args ...any) {
-	l.Warnf(msg, args)
-}
+//func (l *ZapLogger) warningf(msg string, args ...any) {
+//	l.Warnf(msg, args)
+//}

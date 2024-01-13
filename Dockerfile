@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1
-FROM golang:1.21.5
+
+FROM golang:1.21-alpine AS build
 
 # Set destination for COPY
 WORKDIR /app
@@ -10,18 +10,14 @@ RUN go mod download
 
 # Copy the source code. Note the slash at the end, as explained in
 # https://docs.docker.com/engine/reference/builder/#copy
-COPY *.GO ./
+COPY . .
 
-# Build
-RUN CGO_ENABLED=0 GOOS=linuxgo build -o /docker-ehereum-crawler
 
-# Optional:
-# To bind to a TCP port, runtime parameters must be supplied to the docker command.
-# But we can document in the Dockerfile what ports
-# the application is going to listen on by default.
-# https://docs.docker.com/engine/reference/builder/#expose
-EXPOSE 8080
+
+RUN CGO_ENABLED=0  go build -o /crw ./cmd/main.go
+
+#docker run  --name eth-crw  -p 1080:1080 crw  /ethereum-crawler  eth  --http-port 1080 docker ps -a
 
 # Run
-CMD["/docker-ehereum-crawler"]
+CMD ["/crw"]
 

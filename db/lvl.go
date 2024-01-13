@@ -31,6 +31,7 @@ func (cli *LvlClient[T]) Add(key string, val T) error {
 	}
 	return err
 }
+
 func (cli *LvlClient[T]) IsNotFoundError(err error) bool {
 	return errors.Is(err, leveldb.ErrNotFound)
 }
