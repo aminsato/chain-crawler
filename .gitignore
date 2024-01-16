@@ -4,5 +4,5 @@
 Dockerfile1
 /openapi/generated/
 /package-lock.json
-.idea
-.Db_Store
+/.idea
+/.DS_Store
