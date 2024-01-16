@@ -3,10 +3,10 @@ package sync
 import (
 	"context"
 
-	"ethereum-crawler/db"
-	"ethereum-crawler/model"
-	"ethereum-crawler/node"
-	"ethereum-crawler/utils"
+	"chain-crawler/db"
+	"chain-crawler/model"
+	"chain-crawler/node"
+	"chain-crawler/utils"
 )
 
 type Sync struct {
@@ -15,6 +15,7 @@ type Sync struct {
 	height int64
 	ctx    context.Context
 	log    utils.SimpleLogger
+	total  model.Account
 }
 
 func New(ctx context.Context, node node.Node, database db.DB[model.Account], log utils.SimpleLogger) (*Sync, error) {
@@ -27,6 +28,7 @@ func New(ctx context.Context, node node.Node, database db.DB[model.Account], log
 			err = database.Add(db.LastHeightKey, lastItem)
 		}
 	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +39,7 @@ func New(ctx context.Context, node node.Node, database db.DB[model.Account], log
 		ctx:    ctx,
 		height: lastItem.LastHeight,
 		log:    log,
+		total:  lastItem,
 	}, nil
 }
 
@@ -61,7 +64,6 @@ func (s *Sync) Start() error {
 			if err != nil && !s.db.IsNotFoundError(err) {
 				return err
 			}
-			// check if this result is newer than the one in db
 			if account.LastHeight < result.LastHeight || (account.LastHeight == result.LastHeight && account.TxIndex < result.TxIndex) {
 				account.Address = result.Address
 				account.TotalPaidFee += result.TotalPaidFee
@@ -75,11 +77,13 @@ func (s *Sync) Start() error {
 					return err
 				}
 			}
+			s.total.TotalPaidFee += result.TotalPaidFee
 			if result.LastHeight%10 == 0 {
 				lastItem := model.Account{
-					LastHeight:  result.LastHeight,
-					TxIndex:     result.TxIndex,
-					FirstHeight: result.LastHeight,
+					LastHeight:   result.LastHeight,
+					TxIndex:      result.TxIndex,
+					FirstHeight:  result.LastHeight,
+					TotalPaidFee: s.total.TotalPaidFee,
 				}
 				err = s.db.Add(db.LastHeightKey, lastItem)
 				if err != nil {

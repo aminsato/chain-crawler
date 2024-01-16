@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"ethereum-crawler/db"
-	"ethereum-crawler/model"
-	"ethereum-crawler/utils"
+	"chain-crawler/db"
+	"chain-crawler/model"
+	"chain-crawler/utils"
+
 	"github.com/gorilla/mux"
 )
 
-// Create new http server with the given db, port
 type httpService struct {
 	db   db.DB[model.Account]
 	port uint16
@@ -37,19 +37,24 @@ func (h *httpService) Run() (err error) {
 
 	r.Host("localhost:" + portString)
 	err = http.ListenAndServe(":"+portString, r)
-	err = http.ListenAndServe("localhost:"+strconv.FormatUint(uint64(h.port), 10), r)
+	if err != nil {
+		h.log.Errorw(err.Error())
+	}
 
 	return
 }
 
 func (h *httpService) totalPaidFeeHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	w.WriteHeader(http.StatusOK)
 
 	res, err := h.db.Get(vars["address"])
 	if err != nil && !h.db.IsNotFoundError(err) {
 		h.log.Errorw(err.Error())
+	} else if err != nil && h.db.IsNotFoundError(err) {
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(res)
 	if err != nil && !h.db.IsNotFoundError(err) {
 		h.log.Errorw(err.Error())
@@ -70,14 +75,24 @@ func (h *httpService) statusHandler(w http.ResponseWriter, r *http.Request) {
 
 // get firstTransaction
 func (h *httpService) firstTransactionHandler(w http.ResponseWriter, r *http.Request) {
-	records, err := h.db.Records(nil, nil)
+	records := make(chan db.DBItem[model.Account], 10)
+	err := error(nil)
+	go func() {
+		err = h.db.Records(nil, nil, records)
+	}()
+
 	minTransactionHeight := int64(1e10)
 	var firstAccount model.Account
-	for _, v := range records {
-		//Find the minimum value
-		if v.FirstHeight < minTransactionHeight && v.FirstHeight != 0 {
-			minTransactionHeight = v.FirstHeight
-			firstAccount = v
+
+	for {
+		item, ok := <-records
+		if ok {
+			if item.Value.FirstHeight < minTransactionHeight && item.Value.FirstHeight != 0 {
+				minTransactionHeight = item.Value.FirstHeight
+				firstAccount = item.Value
+			}
+		} else {
+			break
 		}
 	}
 	w.WriteHeader(http.StatusOK)

@@ -5,31 +5,33 @@ import (
 	"math/big"
 	"time"
 
-	"ethereum-crawler/model"
-	"ethereum-crawler/utils"
+	"chain-crawler/model"
+	"chain-crawler/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type EthNode struct {
-	ctx     context.Context
-	client  *ethclient.Client
-	log     utils.SimpleLogger
-	blockCh chan *types.Block
+	ctx           context.Context
+	client        *ethclient.Client
+	log           utils.SimpleLogger
+	blockCh       chan *types.Block
+	limiterForReq <-chan time.Time
 }
 
-func NewEthNode(ctx context.Context, nodeAddress string, log *utils.ZapLogger) (*EthNode, error) {
+func NewEthNode(ctx context.Context, nodeAddress string, channelSize int, rps int, log *utils.ZapLogger) (*EthNode, error) {
 	client, err := ethclient.DialContext(ctx, nodeAddress)
 	if err != nil {
 		return nil, err
 	}
 
 	return &EthNode{
-		ctx:     ctx,
-		client:  client,
-		log:     log,
-		blockCh: make(chan *types.Block, 4000),
+		ctx:           ctx,
+		client:        client,
+		log:           log,
+		blockCh:       make(chan *types.Block, channelSize),
+		limiterForReq: time.NewTicker(time.Second / time.Duration(rps)).C,
 	}, nil
 }
 
@@ -38,6 +40,7 @@ func (e *EthNode) FirstBlock() int64 {
 }
 
 func (e *EthNode) getBlockNumber(block_number big.Int) (*types.Block, error) {
+	<-e.limiterForReq
 	block, err := e.client.BlockByNumber(e.ctx, &block_number)
 	if err != nil {
 		e.log.Errorw("Error to get block by number:", err)
@@ -46,6 +49,7 @@ func (e *EthNode) getBlockNumber(block_number big.Int) (*types.Block, error) {
 }
 
 func (e *EthNode) getTransaction(blockHash common.Hash, index uint) (*types.Transaction, error) {
+	<-e.limiterForReq
 	transaction, err := e.client.TransactionInBlock(e.ctx, blockHash, index)
 	if err != nil {
 		e.log.Errorw("Error to get transaction in block:", err)
@@ -54,6 +58,7 @@ func (e *EthNode) getTransaction(blockHash common.Hash, index uint) (*types.Tran
 }
 
 func (e *EthNode) getTransactionSender(transaction *types.Transaction, blockHash common.Hash, index uint) (common.Address, error) {
+	<-e.limiterForReq
 	sender, err := e.client.TransactionSender(e.ctx, transaction, blockHash, index)
 	if err != nil {
 		e.log.Errorw("error to get transaction sender:", err)
@@ -62,20 +67,13 @@ func (e *EthNode) getTransactionSender(transaction *types.Transaction, blockHash
 }
 
 func (e *EthNode) getTransactionReceipt(transactionHash common.Hash) (*types.Receipt, error) {
+	<-e.limiterForReq
 	receipt, err := e.client.TransactionReceipt(e.ctx, transactionHash)
 	if err != nil {
 		e.log.Errorw("error to get transaction receipt:", err)
 	}
 	return receipt, err
 }
-
-//func (e *EthNode) getSenderBakance(sender common.Address) (*big.Int, error) {
-//	balance, err := e.client.BalanceAt(e.ctx, sender, nil)
-//	if err != nil {
-//		e.log.Errorw("error to get sender balance:", err)
-//	}
-//	return balance, err
-//}
 
 func (e *EthNode) Sync(start int64, result chan model.Account) error {
 	errCh := make(chan error)
@@ -136,6 +134,7 @@ func (e *EthNode) fetchTransactions(result chan model.Account) error {
 					e.log.Errorw(err.Error())
 					return err
 				}
+
 				sender, err := e.getTransactionSender(transaction, block.Hash(), uint(k))
 				if err != nil {
 					e.log.Errorw(err.Error())
@@ -146,6 +145,18 @@ func (e *EthNode) fetchTransactions(result chan model.Account) error {
 					e.log.Errorw(err.Error())
 					return err
 				}
+				toAddress := transaction.To()
+
+				isContractInteraction := len(transaction.Data()) > 0
+				if isContractInteraction {
+					result <- model.Account{
+						Address:      toAddress.String(),
+						TotalPaidFee: transaction.GasPrice().Uint64() * receipt.GasUsed,
+						LastHeight:   block.Number().Int64(),
+						TxIndex:      k,
+					}
+				}
+
 				result <- model.Account{
 					Address:      sender.String(),
 					TotalPaidFee: transaction.GasPrice().Uint64() * receipt.GasUsed,

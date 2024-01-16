@@ -1,54 +1,58 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
 
-	"ethereum-crawler/config"
-	"ethereum-crawler/db"
-	"ethereum-crawler/http"
-	"ethereum-crawler/model"
-	"ethereum-crawler/sync"
-	"ethereum-crawler/utils"
+	"chain-crawler/config"
+	"chain-crawler/db"
+	"chain-crawler/http"
+	"chain-crawler/model"
+	"chain-crawler/sync"
+	"chain-crawler/utils"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-/*
-1. last height , last transaction
-2.
-*/
 import (
 	"context"
 	"syscall"
 
-	"ethereum-crawler/node"
+	"chain-crawler/node"
 )
 
-// last height  must be changed to 0
-// print error on server side7
-
+/*
+1. cleanup
+2. fetch contract address ? Yes/No => if yes, update node
+3. check lint and unit test
+4. push to github in chaincrw repo
+5. cleanup main => command version
+6. docker-compose => restart on failure
+*/
 const (
-	dbPathF         = "db-path"
-	dbPathUsage     = "Location of the database files."
-	defaultHTTPPort = "6060"
-	//defaultNodeAddress = "https://mainnet.infura.io/v3/8ae89b94ba6640cb8f9d1c42b53f21ee"
-	defaultNodeAddress = "https://mainnet.infura.io/v3/8ae89b94ba6640cb8f9d1c42b53f21ee"
+	dbPathF                 = "db-path"
+	dbPathUsage             = "Location of the database files."
+	defaultHTTPPort         = "1080"
+	defaultNodeChanSize     = "10"
+	defaultRequestPerSecond = "1"
+	defaultNodeAddress      = "https://mainnet.infura.io/v3/your token"
 
-	logLevelF         = "log-level"
-	NodeAddressF      = "node-address"
-	httpPortF         = "http-port"
-	httpPortUsage     = "The httpPortF on which the HTTP server will listen for requests."
-	configF           = "config"
-	Version           = "0.0.1"
-	logLevelFlagUsage = "Options: debug, info, warn, error."
-	nodeAddressUsage  = "The address of the node to connect to."
+	logLevelF             = "log-level"
+	NodeAddressF          = "node-address"
+	httpPortF             = "http-port"
+	nodeChanSizeF         = "node-chan-size"
+	requestPerSecondF     = "rps"
+	nodeChanSizeUsage     = "The size of the channel that will be used to communicate with the eth node."
+	httpPortUsage         = "The httpPortF on which the HTTP server will listen for requests."
+	Version               = "0.0.1"
+	logLevelFlagUsage     = "Options: debug, info, warn, error."
+	nodeAddressUsage      = "The address of the node to connect to."
+	requestPerSecondUsage = "Maximum number of requests per second for gateway endpoints"
 )
 
 func main() {
@@ -69,8 +73,6 @@ func main() {
 		log.Infow("Start crawler")
 
 		db, err := db.NewLevelDB[model.Account](cfg.DatabasePath)
-
-		// db := db.NewMemDB[model.Account]()
 		if err != nil {
 			log.Error("Error opening db", err)
 			return err
@@ -88,10 +90,8 @@ func main() {
 				log.Errorw("Error in http server", "error", err)
 			}
 		}()
-		input := bufio.NewScanner(os.Stdin)
-		input.Scan()
 
-		node, err := node.NewEthNode(ctx, cfg.NodeAddress, log)
+		node, err := node.NewEthNode(ctx, cfg.NodeAddress, cfg.NodeChanSize, cfg.RequestPerSecond, log)
 		if err != nil {
 			return err
 		}
@@ -153,10 +153,7 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 	ethCmd.Flags().Var(&defaultLogLevel, logLevelF, logLevelFlagUsage)
 	ethCmd.Flags().String(dbPathF, defaultDBPath, dbPathUsage)
 	ethCmd.Flags().String(httpPortF, defaultHTTPPort, httpPortUsage)
+	ethCmd.Flags().String(nodeChanSizeF, defaultNodeChanSize, nodeChanSizeUsage)
+	ethCmd.Flags().String(requestPerSecondF, defaultRequestPerSecond, requestPerSecondUsage)
 	return ethCmd
 }
-
-/*
- $ex=80 go run main.go
- go run main.go ex=80
-*/

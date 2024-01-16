@@ -3,7 +3,7 @@ package node
 import (
 	"sort"
 
-	"ethereum-crawler/model"
+	"chain-crawler/model"
 )
 
 type MockNode struct {

@@ -21,7 +21,7 @@ OAPI_CODEGEN=go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen
 
 
 API_REST_SPEC=./openapi/openapi.yaml
-API_REST_CODE_GEN_LOCATION=./openapi/generated/oapigen/oapigen.go
+API_REST_CODE_GEN_LOCATION=./openapi/generated/oapigen.go
 API_REST_DOCO_GEN_LOCATION=./openapi/generated/doc.html
 
 all: generated
@@ -30,7 +30,6 @@ generated: oapi-doc oapi-go
 npm-install:
 	npm init -y
 	npm install
-	npm install -g oas-validate
 
 # Open API Makefile targets
 oapi-validate:
@@ -40,24 +39,19 @@ oapi-go: oapi-validate
 	${OAPI_CODEGEN} --package oapigen --generate types,spec -o ${API_REST_CODE_GEN_LOCATION} ${API_REST_SPEC}
 
 oapi-doc: oapi-validate
-	./node_modules/.bin/redoc-cli build ${API_REST_SPEC} -o ${API_REST_DOCO_GEN_LOCATION}
-
-
-
+	./node_modules/.bin/redoc-cli bundle ${API_REST_SPEC} -o ${API_REST_DOCO_GEN_LOCATION}
 
 crw: ## compile
-	mkdir -p build
-	go build $(GO_TAGS)  -o build/crw ./cmd/
+	go build $(GO_TAGS)  -o cmd/main ./cmd
 
 clean-testcache:
 	go clean -testcache
-install-deps: | install-gofumpt install-mockgen install-golangci-lint## install some project dependencies
+
+test: clean-testcache   ## tests
+	go test $(GO_TAGS) ./...
 
 install-gofumpt:
 	go install mvdan.cc/gofumpt@latest
-
-install-mockgen:
-	go install go.uber.org/mock/mockgen@latest
 
 install-golangci-lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2

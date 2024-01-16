@@ -40,10 +40,13 @@ func (cli *MemClient[T]) Get(key string) (T, error) {
 	return value, nil
 }
 
-func (cli *MemClient[T]) Records(_ *string, _ *string) (allRecords map[string]T, err error) {
-	allRecords = make(map[string]T)
+func (cli *MemClient[T]) Records(_ *string, _ *string, allRecords chan DBItem[T]) (err error) {
+	defer close(allRecords)
 	for k, v := range cli.db {
-		allRecords[k] = v
+		allRecords <- DBItem[T]{
+			Key:   k,
+			Value: v,
+		}
 	}
-	return allRecords, nil
+	return nil
 }

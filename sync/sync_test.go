@@ -5,27 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"ethereum-crawler/db"
-	"ethereum-crawler/model"
-	"ethereum-crawler/node"
-	"ethereum-crawler/utils"
+	"chain-crawler/db"
+	"chain-crawler/model"
+	"chain-crawler/node"
+	"chain-crawler/utils"
 	"github.com/stretchr/testify/require"
 )
 
-// init test with new mock node, db, log
-var (
-	ctx     = context.Background()
-	ethNode = node.NewMockNode()
-	testDb  = db.NewMemDB[model.Account]()
-	log     = utils.NewNopZapLogger()
-)
-
-func TestNew(t *testing.T) {
-	_, er := New(ctx, ethNode, testDb, log)
-	require.NoError(t, er)
-}
-
 func TestTotalPaidFee(t *testing.T) {
+	testDb := db.NewMemDB[model.Account]()
+	log := utils.NewNopZapLogger()
+	ethNode := node.NewMockNode()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	err := testDb.Add(db.LastHeightKey, model.Account{
@@ -71,6 +61,9 @@ func TestTotalPaidFee(t *testing.T) {
 }
 
 func TestLastHeightKey(t *testing.T) {
+	testDb := db.NewMemDB[model.Account]()
+	log := utils.NewNopZapLogger()
+	ethNode := node.NewMockNode()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	err := testDb.Add(db.LastHeightKey, model.Account{
@@ -99,6 +92,9 @@ func TestLastHeightKey(t *testing.T) {
 }
 
 func TestDuplicateEntry(t *testing.T) {
+	testDb := db.NewMemDB[model.Account]()
+	log := utils.NewNopZapLogger()
+	ethNode := node.NewMockNode()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -139,4 +135,61 @@ func TestDuplicateEntry(t *testing.T) {
 	account, err = testDb.Get("0x3")
 	require.NoError(t, err)
 	require.Equal(t, uint64(4000), account.TotalPaidFee)
+}
+
+func TestRecords(t *testing.T) {
+	testDb := db.NewMemDB[model.Account]()
+	log := utils.NewNopZapLogger()
+	err := testDb.Add(db.LastHeightKey, model.Account{
+		Address:      "",
+		TotalPaidFee: 0,
+		LastHeight:   0,
+	})
+	if err != nil {
+		log.Errorw(err.Error())
+		return
+	}
+	err = testDb.Add("1", model.Account{
+		Address:      "0x3",
+		TotalPaidFee: 4000,
+		LastHeight:   100,
+	})
+	if err != nil {
+		log.Errorw(err.Error())
+		return
+	}
+	err = testDb.Add("2", model.Account{
+		Address:      "0x3",
+		TotalPaidFee: 4000,
+		LastHeight:   100,
+	})
+	if err != nil {
+		log.Errorw(err.Error())
+		return
+	}
+	err = testDb.Add("3", model.Account{
+		Address:      "0x3",
+		TotalPaidFee: 4000,
+		LastHeight:   100,
+	})
+	if err != nil {
+		log.Errorw(err.Error())
+		return
+	}
+	records := make(chan db.DBItem[model.Account], 1)
+	go func() {
+		err = testDb.Records(nil, nil, records)
+	}()
+	count := int(0)
+	isOpen := true
+	for isOpen {
+		_, ok := <-records
+		if ok {
+			count++
+		} else {
+			isOpen = false
+		}
+	}
+	require.Equal(t, 4, count)
+	require.NoError(t, err)
 }

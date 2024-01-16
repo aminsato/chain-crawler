@@ -55,8 +55,8 @@ func (cli *LvlClient[T]) Get(key string) (T, error) {
 	return data, err
 }
 
-func (cli *LvlClient[T]) Records(startKey *string, endKey *string) (allRecords map[string]T, err error) {
-	allRecords = make(map[string]T)
+func (cli *LvlClient[T]) Records(startKey *string, endKey *string, allRecords chan DBItem[T]) (err error) {
+	defer close(allRecords)
 	var rng *util.Range
 	if startKey != nil && endKey != nil {
 		rng = &util.Range{Start: []byte(*startKey), Limit: []byte(*endKey)}
@@ -74,13 +74,13 @@ func (cli *LvlClient[T]) Records(startKey *string, endKey *string) (allRecords m
 		if iter.Value() != nil {
 			err := json.Unmarshal(val, &value)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
-		allRecords[string(key)] = value
+		allRecords <- DBItem[T]{Key: string(key), Value: value}
 	}
 	iter.Release()
-	return allRecords, err
+	return err
 }
 
 func (cli LvlClient[C]) Close() error {

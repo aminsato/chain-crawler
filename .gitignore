@@ -1,0 +1,6 @@
+/node_modules/
+/ethereum_db/
+/cmd/main
+/Dockerfile1
+/openapi/generated/
+/package-lock.json
