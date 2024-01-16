@@ -1,6 +1,8 @@
 /node_modules/
 /ethereum_db/
 /cmd/main/
-/Dockerfile1/
+Dockerfile1
 /openapi/generated/
 /package-lock.json
+.idea
+.Db_Store
