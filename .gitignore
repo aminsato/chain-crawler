@@ -1,8 +1,8 @@
 /node_modules/
 /ethereum_db/
 /cmd/main/
-/db/
+Dockerfile1/
 /openapi/generated/
 /package-lock.json
-/.idea
-/.DS_Store
+.idea/
+.DS_Store/
