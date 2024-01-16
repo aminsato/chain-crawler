@@ -4,5 +4,6 @@
 /Dockerfile1
 /openapi/generated/
 /package-lock.json
-/idea
-/DS_Store
+/.idea
+/.DB_Store
+
