@@ -56,6 +56,13 @@ install-gofumpt:
 install-golangci-lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
 
+
+test-cover: vm  ## tests with coverage
+	mkdir -p coverage
+	go test $(GO_TAGS) -coverpkg=./... -coverprofile=coverage/coverage.out -covermode=atomic ./...
+	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+
+
 lint:
 	@which golangci-lint || make install-golangci-lint
 	golangci-lint run
