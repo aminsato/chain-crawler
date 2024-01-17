@@ -39,8 +39,8 @@ const (
 	dbPathUsage             = "Location of the database files."
 	defaultHTTPPort         = "1080"
 	defaultNodeChanSize     = "10"
-	defaultRequestPerSecond = "1"
-	defaultNodeAddress      = "https://mainnet.infura.io/v3/your token"
+	defaultRequestPerSecond = "10"
+	defaultNodeAddress      = "https://mainnet.infura.io/v3/your Token"
 
 	logLevelF             = "log-level"
 	NodeAddressF          = "node-address"
@@ -64,7 +64,6 @@ func main() {
 		cancel()
 	}()
 	cfg := new(config.Config)
-
 	cmd := NewCmd(cfg, func(cmd *cobra.Command, _ []string) error {
 		log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
 		if err != nil {
@@ -72,6 +71,8 @@ func main() {
 		}
 		log.Infow("Start crawler")
 
+		//initMigration(cfg.DatabasePath)
+		//
 		db, err := db.NewLevelDB[model.Account](cfg.DatabasePath)
 		if err != nil {
 			log.Error("Error opening db", err)
@@ -132,17 +133,12 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 			return nil
 		}
 
-		// TextUnmarshallerHookFunc allows us to unmarshal values that satisfy the
-		// encoding.TextUnmarshaller interface (see the LogLevel type for an example).
 		return v.Unmarshal(config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 			mapstructure.TextUnmarshallerHookFunc(), mapstructure.StringToTimeDurationHookFunc())))
 	}
 
 	var defaultDBPath string
 	defaultDBPath, cwdErr = os.Getwd()
-	// Use empty string if we can't get the working directory.
-	// We don't want to return an error here since that would make `--help` fail.
-	// If the error is non-nil and a db path is not provided by the user, we'll return it in PreRunE.
 	if cwdErr == nil {
 		defaultDBPath = filepath.Join(defaultDBPath, "ethereum_db")
 	}
@@ -157,3 +153,53 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 	ethCmd.Flags().String(requestPerSecondF, defaultRequestPerSecond, requestPerSecondUsage)
 	return ethCmd
 }
+
+//func initMigration(dbPath string) {
+//	db, err := leveldb.OpenFile(dbPath, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer db.Close()
+//
+//	// Iterate through existing entries and update them
+//	iter := db.NewIterator(nil, nil)
+//	for iter.Next() {
+//		key := iter.Key()
+//		value := iter.Value()
+//
+//		// Decode old entry
+//		var oldEntry model.Account
+//		err := json.Unmarshal(value, &oldEntry)
+//		if err != nil {
+//			log.Println("Error decoding entry:", err)
+//			continue
+//		}
+//
+//		// Convert to new entry
+//		newEntry := model.Account{
+//			Address:      oldEntry.Address,
+//			TotalPaidFee: oldEntry.TotalPaidFee,
+//			LastHeight:   oldEntry.LastHeight,
+//			TxIndex:      oldEntry.TxIndex,
+//			FirstHeight:  oldEntry.FirstHeight,
+//			IsContract:   false, // Set a default value for the new field
+//		}
+//
+//		// Encode and update the entry
+//		newValue, err := json.Marshal(newEntry)
+//		if err != nil {
+//			log.Println("Error encoding entry:", err)
+//			continue
+//		}
+//
+//		err = db.Put(key, newValue, nil)
+//		if err != nil {
+//			log.Println("Error updating entry:", err)
+//		}
+//	}
+//	iter.Release()
+//
+//	if err := iter.Error(); err != nil {
+//		log.Fatal(err)
+//	}
+//}

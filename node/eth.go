@@ -145,15 +145,23 @@ func (e *EthNode) fetchTransactions(result chan model.Account) error {
 					e.log.Errorw(err.Error())
 					return err
 				}
-				toAddress := transaction.To()
+
+				contractAddress := func() string {
+					if transaction.To() == nil {
+						return receipt.ContractAddress.String()
+					} else {
+						return transaction.To().String()
+					}
+				}()
 
 				isContractInteraction := len(transaction.Data()) > 0
 				if isContractInteraction {
 					result <- model.Account{
-						Address:      toAddress.String(),
+						Address:      contractAddress,
 						TotalPaidFee: transaction.GasPrice().Uint64() * receipt.GasUsed,
 						LastHeight:   block.Number().Int64(),
 						TxIndex:      k,
+						IsContract:   true,
 					}
 				}
 
@@ -162,6 +170,7 @@ func (e *EthNode) fetchTransactions(result chan model.Account) error {
 					TotalPaidFee: transaction.GasPrice().Uint64() * receipt.GasUsed,
 					LastHeight:   block.Number().Int64(),
 					TxIndex:      k,
+					IsContract:   false,
 				}
 			}
 		}

@@ -104,3 +104,5 @@ func (h *httpService) firstTransactionHandler(w http.ResponseWriter, r *http.Req
 		h.log.Errorw(err.Error())
 	}
 }
+
+//

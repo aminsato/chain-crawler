@@ -5,5 +5,4 @@
 /openapi/generated/
 /package-lock.json
 /.idea
-/.DB_Store
-
+.DS_Store

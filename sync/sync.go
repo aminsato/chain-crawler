@@ -69,6 +69,7 @@ func (s *Sync) Start() error {
 				account.TotalPaidFee += result.TotalPaidFee
 				account.LastHeight = result.LastHeight
 				account.TxIndex = result.TxIndex
+				account.IsContract = result.IsContract
 				if account.FirstHeight == 0 {
 					account.FirstHeight = result.LastHeight
 				}
@@ -84,6 +85,7 @@ func (s *Sync) Start() error {
 					TxIndex:      result.TxIndex,
 					FirstHeight:  result.LastHeight,
 					TotalPaidFee: s.total.TotalPaidFee,
+					IsContract:   result.IsContract,
 				}
 				err = s.db.Add(db.LastHeightKey, lastItem)
 				if err != nil {
