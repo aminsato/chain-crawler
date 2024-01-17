@@ -27,3 +27,9 @@ jobs:
           cache: true
       - name: Tests
         run: make test-cover
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          fail_ci_if_error: true
+          files: ./coverage/coverage.out
+          verbose: true
