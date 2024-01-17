@@ -2,6 +2,8 @@ name: Crw Test
 on:
   push:
     branches:
+      - master
+      - test
   pull_request:
   workflow_dispatch:
 
@@ -25,12 +27,3 @@ jobs:
           cache: true
       - name: Tests
         run: make test-cover
-      - name: Benchmark
-        run: make benchmarks
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          fail_ci_if_error: true
-          files: ./coverage/coverage.out
-          verbose: true
