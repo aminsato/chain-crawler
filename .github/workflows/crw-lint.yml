@@ -5,6 +5,7 @@ on:
       - v*
     branches:
       - master
+      - test
   pull_request:
 permissions:
   contents: read
