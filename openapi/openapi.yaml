@@ -78,11 +78,7 @@ components:
                 application/json:
                     schema:
                         $ref: '#/components/schemas/Status'
-
-
     schemas:
-
-
         Status:
             type: object
             required:
@@ -91,6 +87,7 @@ components:
                 - lastHeight
                 - txIndex
                 - firstHeight
+                - isContract
             properties:
               address:
                 type: string
@@ -110,3 +107,7 @@ components:
                 type: integer
                 format: int64
                 description: The initial block height where the account was first encountered.
+              isContract:
+                type: boolean
+                default: false
+                description: Is the address is a contract address or not.
