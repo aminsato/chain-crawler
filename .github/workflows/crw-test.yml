@@ -1,9 +1,7 @@
-name: Juno Test
+name: Crw Test
 on:
   push:
     branches:
-      - master
-      - test
   pull_request:
   workflow_dispatch:
 
@@ -25,14 +23,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            vm/rust
-            core/rust
-      - name: Install deps
-        run: make install-deps
       - name: Tests
         run: make test-cover
       - name: Benchmark
