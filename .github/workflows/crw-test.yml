@@ -1,0 +1,36 @@
+name: Crw Test
+on:
+  push:
+    branches:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests
+    strategy:
+      fail-fast: false
+      matrix:
+        go: [ '1.21' ]
+        os: [ ubuntu-latest, macos-latest, self-hosted-linux-arm64]
+    runs-on: ${{ matrix.os }}
+    env:
+      VM_DEBUG: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up go
+        uses: actions/setup-go@v4.1.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Tests
+        run: make test-cover
+      - name: Benchmark
+        run: make benchmarks
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          fail_ci_if_error: true
+          files: ./coverage/coverage.out
+          verbose: true
