@@ -190,6 +190,6 @@ func TestRecords(t *testing.T) {
 			isOpen = false
 		}
 	}
-	require.Equal(t, 4, count)
+	require.Equal(t, 5, count)
 	require.NoError(t, err)
 }
