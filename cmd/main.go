@@ -28,14 +28,6 @@ import (
 	"chain-crawler/node"
 )
 
-/*
-1. cleanup
-2. fetch contract address ? Yes/No => if yes, update node
-3. check lint and unit test
-4. push to github in chaincrw repo
-5. cleanup main => command version
-6. docker-compose => restart on failure
-*/
 const (
 	dbPathF                 = "db-path"
 	dbPathUsage             = "Location of the database files."
@@ -61,6 +53,7 @@ const (
 
 func main() {
 	quit := make(chan os.Signal, 1)
+
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
 	g, ctx := errgroup.WithContext(ctx)
@@ -70,15 +63,16 @@ func main() {
 		cancel()
 	}()
 	cfg := new(config.Config)
+	log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
+	if err != nil {
+		log.Fatalf("Error creating logger: %v", err)
+	}
 	cmd := NewCmd(cfg, func(cmd *cobra.Command, _ []string) error {
 		log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
 		if err != nil {
 			return err
 		}
 		log.Infow("Start crawler")
-
-		//initMigration(cfg.DatabasePath)
-		//
 		ethDb, err := db.NewLevelDB[model.Account](cfg.DatabasePath + "/ethereum_db")
 		if err != nil {
 			log.Error("Error opening ethDb", err)
@@ -109,19 +103,22 @@ func main() {
 
 		ethNode, err := node.NewEthNode(ctx, cfg.EthNodeAddress, cfg.NodeChanSize, cfg.RequestPerSecond, log)
 		if err != nil {
+			log.Error("Error creating eth node", err)
 			return err
 		}
 		bdcNode, err := node.NewBscNode(ctx, cfg.BscNodeAddress, cfg.NodeChanSize, cfg.RequestPerSecond, log)
 		if err != nil {
+			log.Error("Error creating bsc node", err)
 			return err
 		}
 		syncEth, err := sync.New(ctx, ethNode, ethDb, log)
 		if err != nil {
+			log.Error("Error creating eth sync", err)
 			return err
 		}
 		syncBsc, err := sync.New(ctx, bdcNode, bscDb, log)
-		_ = syncEth
 		if err != nil {
+			log.Error("Error creating bsc sync", err)
 			return err
 		}
 
@@ -132,12 +129,11 @@ func main() {
 			return syncBsc.Start()
 		})
 		if err := g.Wait(); err != nil {
-			fmt.Println(err)
+			log.Error("Error in sync", err)
 		}
 		return err
 	})
 	if err := cmd.ExecuteContext(ctx); err != nil {
-		log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
 		log.Errorw("Error running command", "error", err)
 		os.Exit(1)
 	}
