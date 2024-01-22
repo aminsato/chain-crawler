@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"chain-crawler/config"
 	"chain-crawler/db"
 	"chain-crawler/http"
@@ -40,10 +42,12 @@ const (
 	defaultHTTPPort         = "1080"
 	defaultNodeChanSize     = "10"
 	defaultRequestPerSecond = "10"
-	defaultNodeAddress      = "https://mainnet.infura.io/v3/your Token"
+	defaultEthNodeAddress   = "your-api-key"
+	defaultBscAddress       = "your-api-key"
 
 	logLevelF             = "log-level"
-	NodeAddressF          = "node-address"
+	ethNodeAddressF       = "eth-node-address"
+	bscNodeAddressF       = "bsc-node-address"
 	httpPortF             = "http-port"
 	nodeChanSizeF         = "node-chan-size"
 	requestPerSecondF     = "rps"
@@ -59,6 +63,8 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
+
 	go func() {
 		<-quit
 		cancel()
@@ -73,34 +79,62 @@ func main() {
 
 		//initMigration(cfg.DatabasePath)
 		//
-		db, err := db.NewLevelDB[model.Account](cfg.DatabasePath)
+		ethDb, err := db.NewLevelDB[model.Account](cfg.DatabasePath + "/ethereum_db")
 		if err != nil {
-			log.Error("Error opening db", err)
+			log.Error("Error opening ethDb", err)
+			return err
+		}
+		bscDb, err := db.NewLevelDB[model.Account](cfg.DatabasePath + "/binance_db")
+		if err != nil {
+			log.Error("Error opening bscDb", err)
 			return err
 		}
 
 		defer func() {
-			err := db.Close()
+			err := ethDb.Close()
 			if err != nil {
-				log.Error("Error closing db", err)
+				log.Error("Error closing ethDb", err)
+			}
+			err = bscDb.Close()
+			if err != nil {
+				log.Error("Error closing bscDb", err)
 			}
 		}()
-		httpService := http.New(db, log, cfg.HTTPPort)
+		httpService := http.New(ethDb, log, cfg.HTTPPort)
 		go func() {
 			if err := httpService.Run(); err != nil {
 				log.Errorw("Error in http server", "error", err)
 			}
 		}()
 
-		node, err := node.NewEthNode(ctx, cfg.NodeAddress, cfg.NodeChanSize, cfg.RequestPerSecond, log)
+		ethNode, err := node.NewEthNode(ctx, cfg.EthNodeAddress, cfg.NodeChanSize, cfg.RequestPerSecond, log)
 		if err != nil {
 			return err
 		}
-		s, err := sync.New(ctx, node, db, log)
+		bdcNode, err := node.NewBscNode(ctx, cfg.BscNodeAddress, cfg.NodeChanSize, cfg.RequestPerSecond, log)
 		if err != nil {
 			return err
 		}
-		return s.Start()
+		syncEth, err := sync.New(ctx, ethNode, ethDb, log)
+		if err != nil {
+			return err
+		}
+		syncBsc, err := sync.New(ctx, bdcNode, bscDb, log)
+		_ = syncEth
+		if err != nil {
+			return err
+		}
+
+		g.Go(func() error {
+			return syncEth.Start()
+		})
+		g.Go(func() error {
+			return syncBsc.Start()
+		})
+		if err := g.Wait(); err != nil {
+			fmt.Println(err)
+		}
+		return err
 	})
 	if err := cmd.ExecuteContext(ctx); err != nil {
 		log, err := utils.NewZapLogger(cfg.LogLevel, cfg.Colour)
@@ -140,12 +174,13 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 	var defaultDBPath string
 	defaultDBPath, cwdErr = os.Getwd()
 	if cwdErr == nil {
-		defaultDBPath = filepath.Join(defaultDBPath, "ethereum_db")
+		defaultDBPath = filepath.Join(defaultDBPath, "dbStore")
 	}
 
 	defaultLogLevel := utils.INFO
 
-	ethCmd.Flags().String(NodeAddressF, defaultNodeAddress, nodeAddressUsage)
+	ethCmd.Flags().String(ethNodeAddressF, defaultEthNodeAddress, nodeAddressUsage)
+	ethCmd.Flags().String(bscNodeAddressF, defaultBscAddress, nodeAddressUsage)
 	ethCmd.Flags().Var(&defaultLogLevel, logLevelF, logLevelFlagUsage)
 	ethCmd.Flags().String(dbPathF, defaultDBPath, dbPathUsage)
 	ethCmd.Flags().String(httpPortF, defaultHTTPPort, httpPortUsage)
@@ -153,53 +188,3 @@ func NewCmd(config *config.Config, run func(*cobra.Command, []string) error) *co
 	ethCmd.Flags().String(requestPerSecondF, defaultRequestPerSecond, requestPerSecondUsage)
 	return ethCmd
 }
-
-//func initMigration(dbPath string) {
-//	db, err := leveldb.OpenFile(dbPath, nil)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	defer db.Close()
-//
-//	// Iterate through existing entries and update them
-//	iter := db.NewIterator(nil, nil)
-//	for iter.Next() {
-//		key := iter.Key()
-//		value := iter.Value()
-//
-//		// Decode old entry
-//		var oldEntry model.Account
-//		err := json.Unmarshal(value, &oldEntry)
-//		if err != nil {
-//			log.Println("Error decoding entry:", err)
-//			continue
-//		}
-//
-//		// Convert to new entry
-//		newEntry := model.Account{
-//			Address:      oldEntry.Address,
-//			TotalPaidFee: oldEntry.TotalPaidFee,
-//			LastHeight:   oldEntry.LastHeight,
-//			TxIndex:      oldEntry.TxIndex,
-//			FirstHeight:  oldEntry.FirstHeight,
-//			IsContract:   false, // Set a default value for the new field
-//		}
-//
-//		// Encode and update the entry
-//		newValue, err := json.Marshal(newEntry)
-//		if err != nil {
-//			log.Println("Error encoding entry:", err)
-//			continue
-//		}
-//
-//		err = db.Put(key, newValue, nil)
-//		if err != nil {
-//			log.Println("Error updating entry:", err)
-//		}
-//	}
-//	iter.Release()
-//
-//	if err := iter.Error(); err != nil {
-//		log.Fatal(err)
-//	}
-//}

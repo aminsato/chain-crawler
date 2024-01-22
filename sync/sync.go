@@ -28,7 +28,6 @@ func New(ctx context.Context, node node.Node, database db.DB[model.Account], log
 			err = database.Add(db.LastHeightKey, lastItem)
 		}
 	}
-
 	if err != nil {
 		return nil, err
 	}

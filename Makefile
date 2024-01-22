@@ -63,8 +63,7 @@ test-cover: vm  ## tests with coverage
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 
 
-lint:
-	@which golangci-lint || make install-golangci-lint
+lint:	@which golangci-lint || make install-golangci-lint
 	golangci-lint run
 
 tidy: ## add missing and remove unused modules
