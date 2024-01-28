@@ -2,9 +2,9 @@ services:
   app:
     image: chain-crw-image
     container_name: chain-crw-container
-    command:  /crw  --http-port 1080 --rps 10 --node-chan-size 10
-      --eth-node-address your-api-key
-        --bsc-node-address your-api-key
+    command:  /crw  start --rps 10 --node-chan-size 10
+      --eth-node-address ${ETH_NODE_ADDRESS}
+      --bsc-node-address ${BSC_NODE_ADDRESS}
     ports:
       - "1080:1080"
     restart: on-failure

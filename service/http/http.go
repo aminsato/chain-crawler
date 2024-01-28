@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"chain-crawler/service"
+
 	"chain-crawler/db"
 	"chain-crawler/model"
 	"chain-crawler/utils"
@@ -18,7 +20,7 @@ type httpService struct {
 	log  *utils.ZapLogger
 }
 
-func New(db db.DB[model.Account], log *utils.ZapLogger, port uint16) *httpService {
+func New(db db.DB[model.Account], log *utils.ZapLogger, port uint16) service.Service {
 	return &httpService{
 		db:   db,
 		port: port,
@@ -104,5 +106,3 @@ func (h *httpService) firstTransactionHandler(w http.ResponseWriter, r *http.Req
 		h.log.Errorw(err.Error())
 	}
 }
-
-//

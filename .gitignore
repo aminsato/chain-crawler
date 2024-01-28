@@ -8,3 +8,5 @@
 .DS_Store
 coverage
 /dbStore
+/crw/dbStore
+.env

@@ -20,12 +20,11 @@ type EthNode struct {
 	limiterForReq <-chan time.Time
 }
 
-func NewEthNode(ctx context.Context, nodeAddress string, channelSize int, rps int, log *utils.ZapLogger) (*EthNode, error) {
+func NewEthNode(ctx context.Context, nodeAddress string, channelSize int, rps int, log *utils.ZapLogger) (Node, error) {
 	client, err := ethclient.DialContext(ctx, nodeAddress)
 	if err != nil {
 		return nil, err
 	}
-
 	return &EthNode{
 		ctx:           ctx,
 		client:        client,

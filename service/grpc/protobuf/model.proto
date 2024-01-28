@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option go_package = "chain-crawler/service/grpc/protobuf/route_guide";
+package route_guide;
+service transaction{
+  rpc GetTotalPaidFee(Address) returns (Account) {}
+  rpc GetStatus(Empty) returns (Account) {}
+  rpc GetFirstHeight(Empty) returns (Account) {}
+}
+message Address{
+  string address = 1;
+}
+message Empty{}
+message Account{
+  string address = 1;
+  uint64 totalPaidFee = 2;
+  int64 lastHeight = 3;
+  int32 txIndex = 4;
+  int64 firstHeight = 5;
+  bool isContract = 6;
+}
+
+
+

@@ -21,7 +21,7 @@ type BscNode struct {
 	limiterForReq <-chan time.Time
 }
 
-func NewBscNode(ctx context.Context, nodeAddress string, channelSize int, rps int, log *utils.ZapLogger) (*BscNode, error) {
+func NewBscNode(ctx context.Context, nodeAddress string, channelSize int, rps int, log *utils.ZapLogger) (Node, error) {
 	client, err := ethclient.DialContext(ctx, nodeAddress)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,6 @@ func (e *BscNode) fetchTransactions(result chan model.Account) error {
 					TotalPaidFee: transaction.GasPrice().Uint64() * receipt.GasUsed,
 					LastHeight:   block.Number().Int64(),
 					TxIndex:      k,
-					IsContract:   false,
 				}
 			}
 		}

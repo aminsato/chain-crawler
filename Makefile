@@ -42,7 +42,7 @@ oapi-doc: oapi-validate
 	./node_modules/.bin/redoc-cli bundle ${API_REST_SPEC} -o ${API_REST_DOCO_GEN_LOCATION}
 
 crw: ## compile
-	go build $(GO_TAGS)  -o cmd/main ./cmd
+	go build $(GO_TAGS)  -o crw/main ./cmd
 
 clean-testcache:
 	go clean -testcache
@@ -63,7 +63,8 @@ test-cover: vm  ## tests with coverage
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 
 
-lint:	@which golangci-lint || make install-golangci-lint
+lint:
+	@which golangci-lint || make install-golangci-lint
 	golangci-lint run
 
 tidy: ## add missing and remove unused modules
