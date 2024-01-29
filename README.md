@@ -26,9 +26,8 @@ Chain Crawler is designed to crawl and store information about various chains, p
 
 1. Clone the repository.
 2. Retrieve an API token and node address from [Infura](https://app.infura.io/).
-3. Place the token and node address into `/cmd/main.go`
+3. Place the token and node address into `/crw/main.go`
 
-Example (`/cmd/main.go`):
 
 var defaultNodeAddress = "https://mainnet.infura.io/v3/YOUR_INFURA_API_TOKEN"
 
