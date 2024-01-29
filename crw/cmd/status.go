@@ -51,6 +51,6 @@ var statusCmd = &cobra.Command{
 }
 
 func init() {
-	statusCmd.Flags().StringVarP(&cfg.Chain, "chain", "c", "eth,bsc", "chain name")
+	statusCmd.Flags().StringVarP(&cfg.Chain, chainF, "c", defaultChain, chainUsage)
 	rootCmd.AddCommand(statusCmd)
 }

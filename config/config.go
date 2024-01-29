@@ -17,4 +17,5 @@ type Config struct {
 	NodeChanSize     int            `mapstructure:"node-chan-size"`
 	RequestPerSecond int            `mapstructure:"rps"`
 	Chain            string         `mapstructure:"chain"`
+	GRPC             bool           `mapstructure:"grpc"`
 }

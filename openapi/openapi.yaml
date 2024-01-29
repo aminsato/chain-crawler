@@ -1,14 +1,13 @@
 openapi: 3.0.0
 info:
-    title: Ethereum Crawler API
+    title: Chain Crawler API
     version: 1.0.0
     contact:
         email: amin.saradar@yahoo.com
     description: >-
-      Explore the Ethereum blockchain with our powerful Ethereum Crawler.
-      This tool allows you to get detailed information about any Ethereum
-      fee balances for every account.
-
+      Explore the blockchain with our powerful Chain Crawler.
+      This tool allows you to get detailed information about 
+      Ethereum and Binance Smart Chain addresses, transactions, and blocks.
 paths:
     "/status":
         get:
@@ -36,8 +35,8 @@ paths:
         get:
             operationId: GetTotalPaidFee
             summary: Total Paid Fee
-            description: Returns the total fees paid by the Ethereum account
-              associated with the provided address.
+            description: Returns the total fees paid by the associated account
+               with the provided address.
             parameters:
               - in: path
                 name: address
@@ -54,7 +53,7 @@ paths:
         operationId: GetFirstTransaction
         summary: First Transaction
         description: |
-          Returns an object containing the first transaction of the Ethereum
+          Returns an object containing the first transaction of the chain
         responses:
           "200":
             $ref: '#/components/responses/FirstTransactionResponse'
@@ -73,7 +72,7 @@ components:
               schema:
                 $ref: '#/components/schemas/Status'
         FirstTransactionResponse:
-            description: Object containing the first transaction of the Ethereum
+            description: Object containing the first transaction of the chain
             content:
                 application/json:
                     schema:
@@ -91,7 +90,7 @@ components:
             properties:
               address:
                 type: string
-                description: Ethereum address associated with the account.
+                description: the associated address with the account.
               totalPaidFee:
                 type: integer
                 format: uint64

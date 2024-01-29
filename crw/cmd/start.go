@@ -12,8 +12,10 @@ import (
 	"strings"
 	"syscall"
 
+	"chain-crawler/config"
+
 	grpc "chain-crawler/service/grpc/server"
-	http "chain-crawler/service/http"
+	"chain-crawler/service/http"
 
 	"chain-crawler/db"
 	"chain-crawler/model"
@@ -26,38 +28,43 @@ import (
 )
 
 const (
-	dbPathUsage                    = "Location of the database files."
 	defaultNodeChanSize            = "10"
 	defaultRequestPerSecond        = "10"
 	defaultEthNodeAddress          = "your eth node address"
 	defaultBscAddress              = "your bsc node address"
-	defaultChain                   = "eth,bsc"
 	defaultEthHttpPort      uint16 = 1080
 	defaultEthGrpcPort      uint16 = 1082
 	defaultBscHttpPort      uint16 = 1081
 	defaultBscGrpcPort      uint16 = 1083
+	defaultGRPC                    = false
+	defaultChain                   = "eth,bsc"
 
-	ethHTTPPortF          = "eth-service-port"
-	ethGrpcPortF          = "eth-grpc-port"
-	bscHTTPPortF          = "bsc-service-port"
-	bscGrpcPortF          = "bsc-grpc-port"
-	chainF                = "chain"
-	dbPathF               = "db-path"
-	logLevelF             = "log-level"
-	ethNodeAddressF       = "eth-node-address"
-	bscNodeAddressF       = "bsc-node-address"
-	nodeChanSizeF         = "node-chan-size"
-	requestPerSecondF     = "rps"
+	dbPathF           = "db-path"
+	requestPerSecondF = "rps"
+	ethNodeAddressF   = "eth-node-address"
+	bscNodeAddressF   = "bsc-node-address"
+	ethHTTPPortF      = "eth-service-port"
+	ethGrpcPortF      = "eth-grpc-port"
+	bscHTTPPortF      = "bsc-service-port"
+	bscGrpcPortF      = "bsc-grpc-port"
+	grpcF             = "grpc"
+	chainF            = "chain"
+	nodeChanSizeF     = "node-chan-size"
+	logLevelF         = "log-level"
+
+	dbPathUsage           = "Location of the database files."
+	requestPerSecondUsage = "Maximum number of requests per second for gateway endpoints"
+	nodeAddressUsage      = "The address of the node to connect to."
 	ethHTTPPortUsage      = "The httpPort on which the HTTP server will listen for eth requests."
+	bscHTTPPortUsage      = "The httpPort on which the HTTP server will listen for bsc requests."
 	ethGrpcPortUsage      = "The grpcPort on which the grpc server will listen for eth requests."
 	bscGrpcPortUsage      = "The grpcPort on which the grpc server will listen for bsc requests."
-	bscHTTPPortUsage      = "The httpPort on which the HTTP server will listen for bsc requests."
 	chainUsage            = "The chains to crawl, use , to separate chains"
 	nodeChanSizeUsage     = "The size of the channel that will be used to communicate with the eth node."
-	Version               = "0.0.1"
 	logLevelFlagUsage     = "Options: debug, info, warn, error."
-	nodeAddressUsage      = "The address of the node to connect to."
-	requestPerSecondUsage = "Maximum number of requests per second for gateway endpoints"
+	grpcUsage             = "Enable grpc server"
+
+	Version = "0.0.1"
 )
 
 // startCmd represents the start command
@@ -114,7 +121,18 @@ var startCmd = &cobra.Command{
 				log.Fatalf(errors.New("chain flag only accept eth and bsc").Error())
 
 			}
-			startChain(ctx, dbPath, httpPort, grpcPort, chainNode, log, g)
+			chainDb, err := db.NewLevelDB[model.Account](dbPath)
+			if err != nil {
+				log.Error("Error opening chainDb", err)
+				log.Fatalf(err.Error())
+			}
+			defer func() {
+				err := chainDb.Close()
+				if err != nil {
+					log.Error("Error closing chainDb", err)
+				}
+			}()
+			startChain(ctx, cfg, chainDb, httpPort, grpcPort, chainNode, log, g)
 		}
 		if err := g.Wait(); err != nil {
 			log.Error("Error in sync ", err)
@@ -125,25 +143,13 @@ var startCmd = &cobra.Command{
 	},
 }
 
-func startChain(ctx context.Context, dbPath string, httpPort uint16, grpcPort uint16, chainNode node.Node, log *utils.ZapLogger, g *errgroup.Group) {
-	chainDb, err := db.NewLevelDB[model.Account](dbPath)
-	if err != nil {
-		log.Error("Error opening chainDb", err)
-		log.Fatalf(err.Error())
+func startChain(ctx context.Context, config *config.Config, chainDb *db.LvlClient[model.Account], httpPort uint16, grpcPort uint16, chainNode node.Node, log *utils.ZapLogger, g *errgroup.Group) {
+	if config.GRPC {
+		grpcService := grpc.NewGrpc(chainDb, log, grpcPort)
+		g.Go(func() error {
+			return grpcService.Run()
+		})
 	}
-	defer func() {
-		err := chainDb.Close()
-		if err != nil {
-			log.Error("Error closing chainDb", err)
-		}
-	}()
-
-	grpcService := grpc.NewGrpc(chainDb, log, grpcPort)
-	go func() {
-		if err := grpcService.Run(); err != nil {
-			log.Errorw("Error in grpc server", "error", err)
-		}
-	}()
 	httpService := http.New(chainDb, log, httpPort)
 	go func() {
 		if err := httpService.Run(); err != nil {
@@ -172,6 +178,7 @@ func init() {
 	startCmd.Flags().Uint16Var(&cfg.EthGrpcPort, ethGrpcPortF, defaultEthGrpcPort, ethGrpcPortUsage)
 	startCmd.Flags().Uint16Var(&cfg.BscHTTPPort, bscHTTPPortF, defaultBscHttpPort, bscHTTPPortUsage)
 	startCmd.Flags().Uint16Var(&cfg.BscGrpcPort, bscGrpcPortF, defaultBscGrpcPort, bscGrpcPortUsage)
+	startCmd.Flags().BoolVar(&cfg.GRPC, grpcF, defaultGRPC, grpcUsage)
 
 	startCmd.Flags().String(nodeChanSizeF, defaultNodeChanSize, nodeChanSizeUsage)
 	startCmd.Flags().String(requestPerSecondF, defaultRequestPerSecond, requestPerSecondUsage)

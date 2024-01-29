@@ -33,6 +33,7 @@ func (h *httpService) Run() (err error) {
 	r.HandleFunc("/totalPaidFee/{address}", h.totalPaidFeeHandler).Methods("GET")
 	r.HandleFunc("/status", h.statusHandler).Methods("GET")
 	r.HandleFunc("/firstTransaction", h.firstTransactionHandler).Methods("GET")
+	r.HandleFunc("/v2/doc", h.serveDoc).Methods("GET")
 
 	// h.port to string
 	portString := strconv.FormatUint(uint64(h.port), 10)
@@ -44,6 +45,10 @@ func (h *httpService) Run() (err error) {
 	}
 
 	return
+}
+
+func (h *httpService) serveDoc(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "./openapi/generated/doc.html")
 }
 
 func (h *httpService) totalPaidFeeHandler(w http.ResponseWriter, r *http.Request) {
