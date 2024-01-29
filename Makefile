@@ -65,7 +65,7 @@ test-cover: vm  ## tests with coverage
 
 lint:
 	@which golangci-lint || make install-golangci-lint
-	golangci-lint run
+	golangci-lint run -out-format=github-actions --timeout=10m
 
 tidy: ## add missing and remove unused modules
 	 go mod tidy
