@@ -20,13 +20,11 @@ Chain Crawler is designed to crawl and store information about various chains, p
 - **LevelDB Database:** Store and manage the crawled data in a LevelDB database.
 - **Docker Compose Support:** Easily deploy and run the crawler using Docker Compose.
 - **REST API:** Access the crawled data through a RESTful API.
-- **gRPC Integration:** Seamlessly access the crawled data through a gRPC-based interface
-- **Cobra Command Line Interface (CLI):** Execute the program effortlessly using intuitive commands and flags facilitated by the Cobra library
-- **API Documentation in YAML:** Provide comprehensive and structured documentation for the API using YAML format
-  
-## Getting Started
+- **gRPC Integration:** Seamlessly access the crawled data through a gRPC-based interface.
+- **Cobra Command Line Interface (CLI):** Execute the program effortlessly using intuitive commands and flags facilitated by the Cobra library.
+- **API Documentation in YAML:** Provide comprehensive and structured documentation for the API using YAML format.
 
-
+##Getting Started
 ### Installation
 
 1. Clone the repository.
@@ -37,7 +35,7 @@ Chain Crawler is designed to crawl and store information about various chains, p
 var defaultNodeAddress = "https://mainnet.infura.io/v3/YOUR_INFURA_API_TOKEN"
 
 
-### Results
+##Results
 
 Here are some of my interesting summary results about the contracts in 2023.
 
@@ -53,7 +51,7 @@ The top accounts that paid the highest fees in 2023.
 
 The top contract accounts that had been spent the highest fees in 2023.
 
-| contract_ADDRESS                               | TOTAL_paid_TX_FEE  |        
+| contract_ADDRESS                               | TOTAL_spent_TX_FEE |        
 |------------------------------------------------|--------------------|
 | 0x7a250d5630b4cf539739df2c5dacb4c659f2488d     | 105625.339320266   |  
 | 0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b     | 87081.423163584    |  
