@@ -39,21 +39,9 @@ var defaultNodeAddress = "https://mainnet.infura.io/v3/YOUR_INFURA_API_TOKEN"
 
 ### Results
 
+Here are some of my interesting summary results about the contracts in 2023.
 
-Here of some of my result
-
-The top contract accounts that paid the highest fees in 2023.
-
-| contract_ADDRESS                               | TOTAL_paid_TX_FEE          
-|------------------------------------------------|---------------------
-| 0x7a250d5630b4cf539739df2c5dacb4c659f2488d     | 105625.339320266      
-| 0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b     | 87081.423163584       
-| 0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad     | 68250.854763935       
-| 0xdac17f958d2ee523a2206206994597c13d831ec7     | 53670.835072488       
-| 0x6b75d8af000000e20b7a7ddf000ba900b4009a80     | 52473.171381869     
-
-The top non-contract accounts that paid the highest fees in 2023.
-
+The top accounts that paid the highest fees in 2023.
 
 | FROM_ADDRESS                                   | TOTAL_paid_TX_FEE     |
 |------------------------------------------------|-----------------------|
@@ -62,3 +50,15 @@ The top non-contract accounts that paid the highest fees in 2023.
 | 0x3527439923a63f8c13cf72b8fe80a77f6e572092     | 14117.65930822        |
 | 0x6887246668a3b87f54deb3b94ba47a6f63f32985     | 13005.099261765       |
 | 0x16d5783a96ab20c9157d7933ac236646b29589a4     | 12907.201414577       |
+
+The top contract accounts that had been spent the highest fees in 2023.
+
+| contract_ADDRESS                               | TOTAL_paid_TX_FEE  |        
+|------------------------------------------------|--------------------|
+| 0x7a250d5630b4cf539739df2c5dacb4c659f2488d     | 105625.339320266   |  
+| 0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b     | 87081.423163584    |  
+| 0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad     | 68250.854763935    |  
+| 0xdac17f958d2ee523a2206206994597c13d831ec7     | 53670.835072488    |  
+| 0x6b75d8af000000e20b7a7ddf000ba900b4009a80     | 52473.171381869    |
+
+
