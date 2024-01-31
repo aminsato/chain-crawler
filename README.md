@@ -24,7 +24,7 @@ Chain Crawler is designed to crawl and store information about various chains, p
 - **Cobra Command Line Interface (CLI):** Execute the program effortlessly using intuitive commands and flags facilitated by the Cobra library.
 - **API Documentation in YAML:** Provide comprehensive and structured documentation for the API using YAML format.
 
-##Getting Started
+## Getting Started
 
 ### Installation
 
