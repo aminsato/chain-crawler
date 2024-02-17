@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"chain-crawler/service"
+
 	"chain-crawler/db"
 	"chain-crawler/model"
 	"chain-crawler/utils"
@@ -18,7 +20,7 @@ type httpService struct {
 	log  *utils.ZapLogger
 }
 
-func New(db db.DB[model.Account], log *utils.ZapLogger, port uint16) *httpService {
+func New(db db.DB[model.Account], log *utils.ZapLogger, port uint16) service.Service {
 	return &httpService{
 		db:   db,
 		port: port,
@@ -31,6 +33,7 @@ func (h *httpService) Run() (err error) {
 	r.HandleFunc("/totalPaidFee/{address}", h.totalPaidFeeHandler).Methods("GET")
 	r.HandleFunc("/status", h.statusHandler).Methods("GET")
 	r.HandleFunc("/firstTransaction", h.firstTransactionHandler).Methods("GET")
+	r.HandleFunc("/v2/doc", h.serveDoc).Methods("GET")
 
 	// h.port to string
 	portString := strconv.FormatUint(uint64(h.port), 10)
@@ -42,6 +45,10 @@ func (h *httpService) Run() (err error) {
 	}
 
 	return
+}
+
+func (h *httpService) serveDoc(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "./openapi/generated/doc.html")
 }
 
 func (h *httpService) totalPaidFeeHandler(w http.ResponseWriter, r *http.Request) {
@@ -104,5 +111,3 @@ func (h *httpService) firstTransactionHandler(w http.ResponseWriter, r *http.Req
 		h.log.Errorw(err.Error())
 	}
 }
-
-//

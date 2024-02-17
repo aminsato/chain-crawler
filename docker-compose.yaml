@@ -1,8 +1,10 @@
 services:
   app:
-    image: eth-crw-image
-    container_name: eth-crw-container
-    command:  /crw  --http-port 1080 --rps 10 --node-chan-size 10 --node-address https://mainnet.infura.io/v3/your-api-key
+    image: chain-crw-image
+    container_name: chain-crw-container
+    command:  /crw  start --rps 10 --node-chan-size 10
+      --eth-node-address ${ETH_NODE_ADDRESS}
+      --bsc-node-address ${BSC_NODE_ADDRESS}
     ports:
       - "1080:1080"
     restart: on-failure
@@ -11,6 +13,6 @@ services:
       context: .
       target: build
     volumes:
-      - level_db:/app/ethereum_db
+      - level_db:/app/dbStore
 volumes:
   level_db:

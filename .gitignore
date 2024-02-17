@@ -1,5 +1,4 @@
 /node_modules/
-/ethereum_db/
 /cmd/main
 /Dockerfile1
 /openapi/generated/
@@ -7,3 +6,6 @@
 /.idea
 .DS_Store
 coverage
+/dbStore
+/crw/dbStore
+.env

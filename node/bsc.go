@@ -12,7 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-type EthNode struct {
+// Binance Smart Chain
+type BscNode struct {
 	ctx           context.Context
 	client        *ethclient.Client
 	log           utils.SimpleLogger
@@ -20,12 +21,13 @@ type EthNode struct {
 	limiterForReq <-chan time.Time
 }
 
-func NewEthNode(ctx context.Context, nodeAddress string, channelSize int, rps int, log *utils.ZapLogger) (Node, error) {
+func NewBscNode(ctx context.Context, nodeAddress string, channelSize int, rps int, log *utils.ZapLogger) (Node, error) {
 	client, err := ethclient.DialContext(ctx, nodeAddress)
 	if err != nil {
 		return nil, err
 	}
-	return &EthNode{
+
+	return &BscNode{
 		ctx:           ctx,
 		client:        client,
 		log:           log,
@@ -34,11 +36,11 @@ func NewEthNode(ctx context.Context, nodeAddress string, channelSize int, rps in
 	}, nil
 }
 
-func (e *EthNode) FirstBlock() int64 {
+func (e *BscNode) FirstBlock() int64 {
 	return 1
 }
 
-func (e *EthNode) getBlockNumber(block_number big.Int) (*types.Block, error) {
+func (e *BscNode) getBlockNumber(block_number big.Int) (*types.Block, error) {
 	<-e.limiterForReq
 	block, err := e.client.BlockByNumber(e.ctx, &block_number)
 	if err != nil {
@@ -47,7 +49,7 @@ func (e *EthNode) getBlockNumber(block_number big.Int) (*types.Block, error) {
 	return block, err
 }
 
-func (e *EthNode) getTransaction(blockHash common.Hash, index uint) (*types.Transaction, error) {
+func (e *BscNode) getTransaction(blockHash common.Hash, index uint) (*types.Transaction, error) {
 	<-e.limiterForReq
 	transaction, err := e.client.TransactionInBlock(e.ctx, blockHash, index)
 	if err != nil {
@@ -56,7 +58,7 @@ func (e *EthNode) getTransaction(blockHash common.Hash, index uint) (*types.Tran
 	return transaction, err
 }
 
-func (e *EthNode) getTransactionSender(transaction *types.Transaction, blockHash common.Hash, index uint) (common.Address, error) {
+func (e *BscNode) getTransactionSender(transaction *types.Transaction, blockHash common.Hash, index uint) (common.Address, error) {
 	<-e.limiterForReq
 	sender, err := e.client.TransactionSender(e.ctx, transaction, blockHash, index)
 	if err != nil {
@@ -65,7 +67,7 @@ func (e *EthNode) getTransactionSender(transaction *types.Transaction, blockHash
 	return sender, err
 }
 
-func (e *EthNode) getTransactionReceipt(transactionHash common.Hash) (*types.Receipt, error) {
+func (e *BscNode) getTransactionReceipt(transactionHash common.Hash) (*types.Receipt, error) {
 	<-e.limiterForReq
 	receipt, err := e.client.TransactionReceipt(e.ctx, transactionHash)
 	if err != nil {
@@ -74,7 +76,7 @@ func (e *EthNode) getTransactionReceipt(transactionHash common.Hash) (*types.Rec
 	return receipt, err
 }
 
-func (e *EthNode) Sync(start int64, result chan model.Account) error {
+func (e *BscNode) Sync(start int64, result chan model.Account) error {
 	errCh := make(chan error)
 	go func() {
 		err := e.fetchBlocks(start)
@@ -98,7 +100,7 @@ func (e *EthNode) Sync(start int64, result chan model.Account) error {
 	}
 }
 
-func (e *EthNode) fetchBlocks(start int64) error {
+func (e *BscNode) fetchBlocks(start int64) error {
 	for i := start; ; i++ {
 		// check context and it its done or there is an error, skip the loop
 		blockNumber := new(big.Int).SetInt64(i)
@@ -120,7 +122,7 @@ func (e *EthNode) fetchBlocks(start int64) error {
 	}
 }
 
-func (e *EthNode) fetchTransactions(result chan model.Account) error {
+func (e *BscNode) fetchTransactions(result chan model.Account) error {
 	for {
 		select {
 		case <-e.ctx.Done():

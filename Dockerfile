@@ -10,7 +10,7 @@ COPY . .
 
 
 
-RUN CGO_ENABLED=0  go build -o /crw ./cmd/main.go
+RUN CGO_ENABLED=0  go build -o /crw ./crw/main.go
 
 CMD ["/crw"]
 
